@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AURA BREW — Where Time Slows Down</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,700&family=Cormorant+Garamond:ital,wght@0,300;0,600;1,300;1,400&family=DM+Sans:wght@200;300;400&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/ScrollTrigger.min.js"></script>
+<style>
+/* ===== VARIABLES ===== */
+:root {
+  --obsidian: #07070a;
+  --obsidian-2: #0d0d12;
+  --amber: #C8860A;
+  --gold: #D4A843;
+  --gold-light: #E8C96A;
+  --cream: #F5F5DC;
+  --cream-dim: rgba(245,245,220,0.7);
+  --teal: #1dd4bf;
+  --teal-dim: rgba(29,212,191,0.15);
+  --glass: rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.08);
+  --ff-serif: 'Playfair Display', Georgia, serif;
+  --ff-italic: 'Cormorant Garamond', serif;
+  --ff-sans: 'DM Sans', sans-serif;
+}
+
+/* ===== RESET ===== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  background: var(--obsidian);
+  color: var(--cream);
+  font-family: var(--ff-sans);
+  overflow-x: hidden;
+  cursor: none;
+}
+::selection { background: rgba(200,134,10,0.3); color: var(--gold-light); }
+
+/* ===== CUSTOM CURSOR ===== */
+#cursor-dot {
+  position: fixed; top: 0; left: 0; z-index: 9999;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--gold); pointer-events: none;
+  transform: translate(-50%,-50%);
+  transition: width 0.2s, height 0.2s, background 0.2s;
+}
+#cursor-ring {
+  position: fixed; top: 0; left: 0; z-index: 9998;
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid rgba(212,168,67,0.5);
+  pointer-events: none; transform: translate(-50%,-50%);
+  transition: width 0.3s, height 0.3s, border-color 0.3s, opacity 0.3s;
+}
+body.cursor-hover #cursor-dot { width: 4px; height: 4px; background: var(--teal); }
+body.cursor-hover #cursor-ring { width: 56px; height: 56px; border-color: var(--teal); }
+
+/* ===== LOADER ===== */
+#loader {
+  position: fixed; inset: 0; z-index: 9000;
+  background: var(--obsidian);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 32px;
+}
+#loader-logo {
+  font-family: var(--ff-serif);
+  font-size: clamp(2.5rem, 6vw, 5rem);
+  font-weight: 900;
+  letter-spacing: 0.25em;
+  color: transparent;
+  -webkit-text-stroke: 1px rgba(212,168,67,0.4);
+  clip-path: inset(0 100% 0 0);
+  transition: none;
+}
+#loader-line {
+  width: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  transition: none;
+}
+#loader-sub {
+  font-family: var(--ff-sans); font-weight: 200;
+  font-size: 0.75rem; letter-spacing: 0.4em;
+  color: rgba(245,245,220,0.4);
+  text-transform: uppercase; opacity: 0;
+}
+
+/* ===== NAVIGATION ===== */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 28px 60px;
+  background: linear-gradient(to bottom, rgba(7,7,10,0.9) 0%, transparent 100%);
+  opacity: 0;
+}
+.nav-logo {
+  font-family: var(--ff-serif); font-weight: 900; font-size: 1.25rem;
+  letter-spacing: 0.2em; color: var(--cream);
+  text-decoration: none;
+}
+.nav-logo span { color: var(--gold); }
+.nav-links { display: flex; gap: 48px; }
+.nav-links a {
+  font-family: var(--ff-sans); font-weight: 300; font-size: 0.75rem;
+  letter-spacing: 0.25em; text-transform: uppercase; color: var(--cream-dim);
+  text-decoration: none; transition: color 0.3s;
+}
+.nav-links a:hover { color: var(--gold); }
+.nav-cta {
+  font-family: var(--ff-sans); font-weight: 300; font-size: 0.7rem;
+  letter-spacing: 0.25em; text-transform: uppercase;
+  color: var(--gold); border: 1px solid rgba(212,168,67,0.4);
+  padding: 10px 24px; text-decoration: none;
+  transition: all 0.4s; position: relative; overflow: hidden;
+}
+.nav-cta::before {
+  content: ''; position: absolute; inset: 0;
+  background: var(--gold); transform: scaleX(0); transform-origin: left;
+  transition: transform 0.4s ease; z-index: -1;
+}
+.nav-cta:hover { color: var(--obsidian); }
+.nav-cta:hover::before { transform: scaleX(1); }
+
+/* ===== BOKEH BACKGROUND ===== */
+#bokeh-bg {
+  position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden;
+}
+.bokeh {
+  position: absolute; border-radius: 50%;
+  filter: blur(80px); opacity: 0;
+  animation: bokehDrift 12s infinite alternate ease-in-out;
+}
+.bokeh-1 { width: 400px; height: 400px; background: radial-gradient(circle, rgba(200,134,10,0.25), transparent 70%); top: 10%; left: 5%; animation-delay: 0s; animation-duration: 14s; }
+.bokeh-2 { width: 300px; height: 300px; background: radial-gradient(circle, rgba(29,212,191,0.15), transparent 70%); top: 60%; right: 8%; animation-delay: -4s; animation-duration: 18s; }
+.bokeh-3 { width: 500px; height: 300px; background: radial-gradient(circle, rgba(200,134,10,0.12), transparent 70%); bottom: 15%; left: 30%; animation-delay: -8s; animation-duration: 16s; }
+.bokeh-4 { width: 250px; height: 250px; background: radial-gradient(circle, rgba(29,212,191,0.1), transparent 70%); top: 35%; left: 60%; animation-delay: -2s; animation-duration: 20s; }
+.bokeh-5 { width: 200px; height: 400px; background: radial-gradient(circle, rgba(212,168,67,0.1), transparent 70%); top: 5%; right: 35%; animation-delay: -6s; animation-duration: 15s; }
+
+@keyframes bokehDrift {
+  0% { transform: translate(0, 0) scale(1); opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { transform: translate(40px, 30px) scale(1.15); opacity: 0.5; }
+}
+
+/* ===== HERO SECTION ===== */
+#hero {
+  position: relative; height: 100vh; width: 100%;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; z-index: 1;
+}
+#hero-canvas {
+  position: absolute; inset: 0; width: 100% !important; height: 100% !important;
+  z-index: 2;
+}
+.hero-content {
+  position: relative; z-index: 10;
+  text-align: center; pointer-events: none;
+  max-width: 900px; padding: 0 40px;
+}
+.hero-eyebrow {
+  font-family: var(--ff-sans); font-weight: 200;
+  font-size: 0.7rem; letter-spacing: 0.5em;
+  text-transform: uppercase; color: var(--gold);
+  margin-bottom: 24px; opacity: 0;
+}
+.hero-title {
+  font-family: var(--ff-serif); font-weight: 900;
+  font-size: clamp(3.5rem, 9vw, 9rem);
+  line-height: 0.9; color: var(--cream);
+  margin-bottom: 32px;
+}
+.hero-title em {
+  font-style: italic; color: transparent;
+  -webkit-text-stroke: 1px var(--gold);
+}
+.hero-title .line { display: block; overflow: hidden; }
+.hero-title .line span { display: block; transform: translateY(110%); }
+.hero-sub {
+  font-family: var(--ff-italic); font-style: italic;
+  font-weight: 300; font-size: clamp(1rem, 2vw, 1.4rem);
+  color: var(--cream-dim); letter-spacing: 0.05em;
+  margin-bottom: 56px; opacity: 0;
+}
+.hero-actions { display: flex; gap: 20px; justify-content: center; opacity: 0; }
+
+/* ===== LIQUID GLOW BUTTON ===== */
+.btn {
+  font-family: var(--ff-sans); font-weight: 300; font-size: 0.75rem;
+  letter-spacing: 0.3em; text-transform: uppercase;
+  padding: 16px 40px; border: none; text-decoration: none;
+  position: relative; overflow: hidden; cursor: none; display: inline-block;
+  transition: color 0.4s;
+}
+.btn-primary {
+  background: var(--gold); color: var(--obsidian);
+}
+.btn-primary::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at var(--mx,50%) var(--my,50%), var(--gold-light) 0%, var(--amber) 60%);
+  opacity: 0; transition: opacity 0.4s;
+}
+.btn-primary:hover::before { opacity: 1; }
+.btn-primary::after {
+  content: ''; position: absolute;
+  width: 200%; height: 200%; border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  left: var(--mx, 50%); top: var(--my, 50%);
+  transform: translate(-50%, -50%) scale(0);
+  transition: transform 0.6s ease;
+}
+.btn-primary:hover::after { transform: translate(-50%,-50%) scale(1); opacity: 0; }
+.btn-ghost {
+  background: transparent;
+  color: var(--cream); border: 1px solid rgba(245,245,220,0.25);
+}
+.btn-ghost::before {
+  content: ''; position: absolute; inset: 0;
+  background: rgba(245,245,220,0.05);
+  transform: scaleX(0); transform-origin: left;
+  transition: transform 0.4s ease;
+}
+.btn-ghost:hover::before { transform: scaleX(1); }
+.btn-ghost:hover { border-color: rgba(245,245,220,0.5); }
+
+/* ===== SCROLL INDICATOR ===== */
+.scroll-hint {
+  position: absolute; bottom: 40px; left: 50%;
+  transform: translateX(-50%); z-index: 10;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  opacity: 0;
+}
+.scroll-hint span {
+  font-family: var(--ff-sans); font-weight: 200;
+  font-size: 0.6rem; letter-spacing: 0.4em; text-transform: uppercase;
+  color: rgba(245,245,220,0.4);
+}
+.scroll-line {
+  width: 1px; height: 60px;
+  background: linear-gradient(to bottom, transparent, var(--gold), transparent);
+  animation: scrollPulse 2s infinite;
+}
+@keyframes scrollPulse {
+  0%, 100% { opacity: 0.3; transform: scaleY(0.8); }
+  50% { opacity: 1; transform: scaleY(1); }
+}
+
+/* ===== CRAFT SECTION ===== */
+#craft {
+  position: relative; z-index: 5;
+  padding: 140px 80px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 80px;
+  align-items: center;
+  border-top: 1px solid rgba(212,168,67,0.1);
+}
+.craft-label {
+  font-family: var(--ff-sans); font-weight: 200;
+  font-size: 0.65rem; letter-spacing: 0.5em;
+  text-transform: uppercase; color: var(--gold);
+  margin-bottom: 32px;
+}
+.craft-title {
+  font-family: var(--ff-serif); font-weight: 700;
+  font-size: clamp(2.5rem, 5vw, 4.5rem);
+  line-height: 1.05; color: var(--cream);
+  margin-bottom: 40px;
+}
+.craft-title em { font-style: italic; color: var(--gold); }
+.craft-body {
+  font-family: var(--ff-italic); font-weight: 300;
+  font-size: 1.1rem; line-height: 1.9;
+  color: rgba(245,245,220,0.6);
+}
+.craft-body + .craft-body { margin-top: 24px; }
+.craft-stats {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 40px;
+  padding-top: 20px;
+}
+.stat-num {
+  font-family: var(--ff-serif); font-weight: 900;
+  font-size: 3.5rem; color: var(--gold); line-height: 1;
+}
+.stat-label {
+  font-family: var(--ff-sans); font-weight: 200;
+  font-size: 0.65rem; letter-spacing: 0.3em;
+  text-transform: uppercase; color: rgba(245,245,220,0.4);
+  margin-top: 8px;
+}
+.craft-visual {
+  position: relative; display: flex; align-items: center; justify-content: center;
+}
+.craft-ring {
+  width: 400px; height: 400px; border-radius: 50%;
+  border: 1px solid rgba(212,168,67,0.15);
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.craft-ring::before {
+  content: ''; position: absolute;
+  width: 300px; height: 300px; border-radius: 50%;
+  border: 1px solid rgba(212,168,67,0.08);
+}
+.craft-ring::after {
+  content: ''; position: absolute;
+  width: 200px; height: 200px; border-radius: 50%;
+  border: 1px solid rgba(29,212,191,0.1);
+  animation: ringRotate 12s linear infinite;
+}
+@keyframes ringRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+.craft-center-text {
+  text-align: center;
+}
+.craft-center-text p {
+  font-family: var(--ff-italic); font-style: italic;
+  font-size: 1.1rem; color: var(--cream-dim); line-height: 1.6;
+}
+.craft-center-text span {
+  display: block; font-family: var(--ff-sans); font-size: 0.6rem;
+  letter-spacing: 0.4em; text-transform: uppercase;
+  color: var(--gold); margin-top: 16px;
+}
+
+/* ===== MENU SECTION ===== */
+#menu {
+  position: relative; z-index: 5;
+  padding: 120px 80px;
+  border-top: 1px solid rgba(212,168,67,0.1);
+}
+.section-header {
+  text-align: center; margin-bottom: 80px;
+}
+.section-eyebrow {
+  font-family: var(--ff-sans); font-weight: 200;
+  font-size: 0.65rem; letter-spacing: 0.5em;
+  text-transform: uppercase; color: var(--gold);
+  display: block; margin-bottom: 20px;
+}
+.section-title {
+  font-family: var(--ff-serif); font-weight: 900;
+  font-size: clamp(2.5rem, 5vw, 5rem);
+  color: var(--cream);
+}
+.section-title em { font-style: italic; color: transparent; -webkit-text-stroke: 1px var(--gold); }
+.menu-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 2px;
+}
+.menu-card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  padding: 48px 40px;
+  position: relative; overflow: hidden;
+  transition: border-color 0.4s;
+  cursor: none;
+}
+.menu-card::before {
+  content: ''; position: absolute;
+  inset: 0; opacity: 0;
+  background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(212,168,67,0.08), transparent 60%);
+  transition: opacity 0.4s;
+}
+.menu-card:hover { border-color: rgba(212,168,67,0.25); }
+.menu-card:hover::before { opacity: 1; }
+.menu-card-num {
+  font-family: var(--ff-sans); font-weight: 200;
+  font-size: 0.6rem; letter-spacing: 0.3em; color: var(--gold);
+  margin-bottom: 32px;
+}
+.menu-card-icon {
+  font-size: 2.5rem; margin-bottom: 24px; display: block;
+  filter: drop-shadow(0 0 20px rgba(200,134,10,0.4));
+}
+.menu-card-name {
+  font-family: var(--ff-serif); font-weight: 700;
+  font-size: 1.5rem; color: var(--cream);
+  margin-bottom: 12px;
+}
+.menu-card-desc {
+  font-family: var(--ff-italic); font-style: italic;
+  font-weight: 300; font-size: 0.9rem; line-height: 1.7;
+  color: rgba(245,245,220,0.5);
+  margin-bottom: 28px;
+}
+.menu-card-price {
+  font-family: var(--ff-serif); font-weight: 700;
+  font-size: 1.2rem; color: var(--gold);
+}
+.menu-card-bottom {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-top: 32px; padding-top: 24px;
+  border-top: 1px solid rgba(212,168,67,0.15);
+}
+.menu-card-tag {
+  font-family: var(--ff-sans); font-weight: 200;
+  font-size: 0.6rem; letter-spacing: 0.3em;
+  text-transform: uppercase; color: rgba(29,212,191,0.6);
+}
+.menu-card-add {
+  width: 36px; height: 36px; border-radius: 50%;
+  border: 1px solid rgba(212,168,67,0.3);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--gold); font-size: 1.2rem; cursor: none;
+  transition: all 0.3s;
+}
+.menu-card:hover .menu-card-add {
+  background: var(--gold); color: var(--obsidian);
+  border-color: var(--gold);
+}
+
+/* ===== MANIFESTO SECTION ===== */
+#manifesto {
+  position: relative; z-index: 5;
+  padding: 160px 80px;
+  text-align: center;
+  border-top: 1px solid rgba(212,168,67,0.1);
+  overflow: hidden;
+}
+#manifesto::before {
+  content: '"';
+  font-family: var(--ff-serif); font-size: 40rem; font-weight: 900;
+  color: rgba(212,168,67,0.02);
+  position: absolute; top: -80px; left: -40px; line-height: 1;
+  pointer-events: none;
+}
+.manifesto-quote {
+  font-family: var(--ff-italic); font-style: italic;
+  font-weight: 300;
+  font-size: clamp(1.8rem, 4vw, 3.5rem);
+  line-height: 1.4; color: var(--cream);
+  max-width: 900px; margin: 0 auto 40px;
+}
+.manifesto-quote strong { font-weight: 600; color: var(--gold); font-style: normal; }
+.manifesto-attr {
+  font-family: var(--ff-sans); font-weight: 200;
+  font-size: 0.65rem; letter-spacing: 0.5em;
+  text-transform: uppercase; color: rgba(245,245,220,0.3);
+}
+.manifesto-line {
+  width: 60px; height: 1px;
+  background: var(--gold); margin: 32px auto;
+}
+
+/* ===== PROCESS SECTION ===== */
+#process {
+  position: relative; z-index: 5;
+  padding: 120px 80px;
+  border-top: 1px solid rgba(212,168,67,0.1);
+}
+.process-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 1px; margin-top: 80px;
+  background: rgba(212,168,67,0.1);
+}
+.process-step {
+  background: var(--obsidian); padding: 48px 32px;
+  position: relative;
+}
+.process-step-num {
+  font-family: var(--ff-serif); font-weight: 900;
+  font-size: 5rem; color: rgba(212,168,67,0.06);
+  line-height: 1; margin-bottom: 24px;
+  position: absolute; top: 20px; right: 24px;
+}
+.process-step-icon { font-size: 1.5rem; margin-bottom: 20px; display: block; }
+.process-step-title {
+  font-family: var(--ff-serif); font-weight: 700;
+  font-size: 1.2rem; color: var(--cream); margin-bottom: 12px;
+}
+.process-step-desc {
+  font-family: var(--ff-italic); font-style: italic;
+  font-weight: 300; font-size: 0.85rem; line-height: 1.7;
+  color: rgba(245,245,220,0.45);
+}
+
+/* ===== RESERVE SECTION ===== */
+#reserve {
+  position: relative; z-index: 5;
+  padding: 160px 80px;
+  text-align: center;
+  border-top: 1px solid rgba(212,168,67,0.1);
+  background: linear-gradient(to bottom, transparent, rgba(200,134,10,0.03), transparent);
+}
+.reserve-title {
+  font-family: var(--ff-serif); font-weight: 900;
+  font-size: clamp(3rem, 7vw, 7rem);
+  line-height: 0.95; color: var(--cream);
+  margin-bottom: 32px;
+}
+.reserve-title em {
+  font-style: italic; color: transparent;
+  -webkit-text-stroke: 1px rgba(212,168,67,0.6);
+}
+.reserve-sub {
+  font-family: var(--ff-italic); font-style: italic;
+  font-size: 1.1rem; color: rgba(245,245,220,0.5);
+  margin-bottom: 56px; font-weight: 300;
+}
+.reserve-actions { display: flex; gap: 20px; justify-content: center; }
+
+/* ===== FOOTER ===== */
+footer {
+  position: relative; z-index: 5;
+  padding: 60px 80px;
+  border-top: 1px solid rgba(212,168,67,0.1);
+  display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+.footer-logo {
+  font-family: var(--ff-serif); font-weight: 900;
+  font-size: 1.5rem; color: var(--cream); letter-spacing: 0.15em;
+}
+.footer-logo span { color: var(--gold); }
+.footer-center {
+  font-family: var(--ff-italic); font-style: italic;
+  font-size: 0.85rem; color: rgba(245,245,220,0.3);
+  text-align: center;
+}
+.footer-right {
+  text-align: right;
+  font-family: var(--ff-sans); font-weight: 200;
+  font-size: 0.65rem; letter-spacing: 0.3em;
+  text-transform: uppercase; color: rgba(245,245,220,0.3);
+}
+.footer-socials { display: flex; gap: 24px; justify-content: flex-end; margin-bottom: 16px; }
+.footer-socials a {
+  color: rgba(245,245,220,0.3); text-decoration: none;
+  font-size: 0.65rem; letter-spacing: 0.2em; text-transform: uppercase;
+  transition: color 0.3s;
+}
+.footer-socials a:hover { color: var(--gold); }
+
+/* ===== GRAIN OVERLAY ===== */
+#grain {
+  position: fixed; inset: 0; z-index: 1000;
+  pointer-events: none; opacity: 0.03;
+}
+
+/* ===== STEAM EFFECT ===== */
+.steam-wrap {
+  position: absolute; left: 50%; top: -20px;
+  transform: translateX(-50%);
+  display: flex; gap: 8px; z-index: 15;
+}
+.steam-strand {
+  width: 3px; border-radius: 10px;
+  background: linear-gradient(to top, rgba(245,245,220,0.6), transparent);
+  animation: steamRise 2.5s ease-in-out infinite;
+}
+.steam-strand:nth-child(1) { height: 40px; animation-delay: 0s; }
+.steam-strand:nth-child(2) { height: 55px; animation-delay: 0.4s; }
+.steam-strand:nth-child(3) { height: 35px; animation-delay: 0.8s; }
+.steam-strand:nth-child(4) { height: 50px; animation-delay: 0.2s; }
+.steam-strand:nth-child(5) { height: 42px; animation-delay: 0.6s; }
+@keyframes steamRise {
+  0% { transform: translateY(0) scaleX(1); opacity: 0; }
+  25% { opacity: 0.6; }
+  75% { opacity: 0.2; }
+  100% { transform: translateY(-60px) scaleX(3); opacity: 0; }
+}
+
+/* ===== UTILITY ===== */
+.overflow-h { overflow: hidden; }
+.text-gold { color: var(--gold); }
+
+/* ===== RESPONSIVE ===== */
+@media (max-width: 1024px) {
+  #craft { grid-template-columns: 1fr; gap: 60px; padding: 100px 40px; }
+  .craft-ring { width: 280px; height: 280px; }
+  .menu-grid { grid-template-columns: repeat(2, 1fr); }
+  .process-grid { grid-template-columns: repeat(2, 1fr); }
+  nav { padding: 20px 32px; }
+  .nav-links { display: none; }
+}
+@media (max-width: 768px) {
+  #craft, #menu, #manifesto, #process, #reserve { padding: 80px 24px; }
+  footer { grid-template-columns: 1fr; gap: 24px; padding: 40px 24px; text-align: center; }
+  .footer-socials, .footer-right { justify-content: center; text-align: center; }
+  .menu-grid { grid-template-columns: 1fr; }
+  .process-grid { grid-template-columns: 1fr; }
+  .reserve-actions { flex-direction: column; align-items: center; }
+  .hero-actions { flex-direction: column; align-items: center; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- Grain texture SVG filter -->
+<svg id="grain" xmlns="http://www.w3.org/2000/svg">
+  <filter id="noise-filter"><feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="4" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter>
+  <rect width="100%" height="100%" filter="url(#noise-filter)"/>
+</svg>
+
+<!-- Custom Cursor -->
+<div id="cursor-dot"></div>
+<div id="cursor-ring"></div>
+
+<!-- Bokeh Background -->
+<div id="bokeh-bg">
+  <div class="bokeh bokeh-1"></div>
+  <div class="bokeh bokeh-2"></div>
+  <div class="bokeh bokeh-3"></div>
+  <div class="bokeh bokeh-4"></div>
+  <div class="bokeh bokeh-5"></div>
+</div>
+
+<!-- Loader -->
+<div id="loader">
+  <div id="loader-logo">AURA BREW</div>
+  <div id="loader-line"></div>
+  <div id="loader-sub">Est. 2024 · Artisan Collection</div>
+</div>
+
+<!-- Navigation -->
+<nav id="nav">
+  <a href="#" class="nav-logo">AURA<span>·</span>BREW</a>
+  <div class="nav-links">
+    <a href="#craft">Our Craft</a>
+    <a href="#menu">Menu</a>
+    <a href="#process">Process</a>
+    <a href="#reserve">Reserve</a>
+  </div>
+  <a href="#reserve" class="nav-cta">Reserve a Table</a>
+</nav>
+
+<!-- Hero Section -->
+<section id="hero">
+  <canvas id="hero-canvas"></canvas>
+
+  <div class="hero-content">
+    <p class="hero-eyebrow">Artisan · Obsidian · Gold</p>
+    <h1 class="hero-title">
+      <span class="line"><span>AURA</span></span>
+      <span class="line"><span><em>BREW</em></span></span>
+    </h1>
+    <p class="hero-sub">"Brewed in the shadows, served in the light."</p>
+    <div class="hero-actions">
+      <a href="#menu" class="btn btn-primary">Explore the Menu</a>
+      <a href="#craft" class="btn btn-ghost">Our Story</a>
+    </div>
+  </div>
+
+  <div class="scroll-hint">
+    <span>Scroll to Discover</span>
+    <div class="scroll-line"></div>
+  </div>
+</section>
+
+<!-- Craft Section -->
+<section id="craft">
+  <div class="craft-left">
+    <p class="craft-label">The Aura Philosophy</p>
+    <h2 class="craft-title">
+      Where <em>darkness</em><br>meets flavor
+    </h2>
+    <p class="craft-body">Every cup at Aura Brew is a meditation. We source single-origin beans from the world's shadow highlands — places where altitude, mist, and volcanic soil conspire to create something extraordinary.</p>
+    <p class="craft-body" style="margin-top:20px">We don't make coffee. We distill time into liquid form.</p>
+    <div class="craft-stats">
+      <div>
+        <div class="stat-num">17</div>
+        <div class="stat-label">Single Origins</div>
+      </div>
+      <div>
+        <div class="stat-num">72h</div>
+        <div class="stat-label">Cold Brew Steep</div>
+      </div>
+      <div>
+        <div class="stat-num">4°</div>
+        <div class="stat-label">Roast Precision</div>
+      </div>
+      <div>
+        <div class="stat-num">∞</div>
+        <div class="stat-label">Flavour Depth</div>
+      </div>
+    </div>
+  </div>
+  <div class="craft-visual">
+    <div class="craft-ring">
+      <div class="craft-center-text">
+        <p>"Where time slows down,<br>one drop at a time."</p>
+        <span>— The Aura Manifesto</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Menu Section -->
+<section id="menu">
+  <div class="section-header">
+    <span class="section-eyebrow">Signature Collection</span>
+    <h2 class="section-title">The <em>Dark</em> Menu</h2>
+  </div>
+  <div class="menu-grid">
+
+    <div class="menu-card">
+      <div class="menu-card-num">01</div>
+      <span class="menu-card-icon">☕</span>
+      <div class="menu-card-name">Obsidian Espresso</div>
+      <div class="menu-card-desc">Triple-extracted through volcanic stone filters. Notes of dark cacao, burnt caramel, and whispered midnight.</div>
+      <div class="menu-card-bottom">
+        <div>
+          <div class="menu-card-price">₹ 420</div>
+          <div class="menu-card-tag">Single Origin · Ethiopia</div>
+        </div>
+        <div class="menu-card-add">+</div>
+      </div>
+    </div>
+
+    <div class="menu-card">
+      <div class="menu-card-num">02</div>
+      <span class="menu-card-icon">🌑</span>
+      <div class="menu-card-name">Shadow Latte</div>
+      <div class="menu-card-desc">Activated charcoal-kissed milk, oat cream velvet, and our house espresso. Visually arresting. Quietly devastating.</div>
+      <div class="menu-card-bottom">
+        <div>
+          <div class="menu-card-price">₹ 580</div>
+          <div class="menu-card-tag">Signature · House Blend</div>
+        </div>
+        <div class="menu-card-add">+</div>
+      </div>
+    </div>
+
+    <div class="menu-card">
+      <div class="menu-card-num">03</div>
+      <span class="menu-card-icon">✨</span>
+      <div class="menu-card-name">Gold Cortado</div>
+      <div class="menu-card-desc">24-karat gold dust finish. Equal parts espresso and warmed oat milk. The luxury of restraint.</div>
+      <div class="menu-card-bottom">
+        <div>
+          <div class="menu-card-price">₹ 750</div>
+          <div class="menu-card-tag">Premium · Colombia</div>
+        </div>
+        <div class="menu-card-add">+</div>
+      </div>
+    </div>
+
+    <div class="menu-card">
+      <div class="menu-card-num">04</div>
+      <span class="menu-card-icon">🫧</span>
+      <div class="menu-card-name">Crystal Cold Brew</div>
+      <div class="menu-card-desc">72-hour steep. Served over hand-carved glacier ice. The color of dusk over still water.</div>
+      <div class="menu-card-bottom">
+        <div>
+          <div class="menu-card-price">₹ 640</div>
+          <div class="menu-card-tag">Cold · Guatemala</div>
+        </div>
+        <div class="menu-card-add">+</div>
+      </div>
+    </div>
+
+    <div class="menu-card">
+      <div class="menu-card-num">05</div>
+      <span class="menu-card-icon">🌿</span>
+      <div class="menu-card-name">Cacao Noir</div>
+      <div class="menu-card-desc">Dark ceremonial cacao, tonka bean, and espresso. A ritual disguised as a beverage.</div>
+      <div class="menu-card-bottom">
+        <div>
+          <div class="menu-card-price">₹ 690</div>
+          <div class="menu-card-tag">Ritual Blend · Peru</div>
+        </div>
+        <div class="menu-card-add">+</div>
+      </div>
+    </div>
+
+    <div class="menu-card">
+      <div class="menu-card-num">06</div>
+      <span class="menu-card-icon">🌊</span>
+      <div class="menu-card-name">Midnight Tonic</div>
+      <div class="menu-card-desc">Sparkling elderflower tonic, pour-over drop, bergamot oil. The sound of rain in a cup.</div>
+      <div class="menu-card-bottom">
+        <div>
+          <div class="menu-card-price">₹ 560</div>
+          <div class="menu-card-tag">Seasonal · Japan</div>
+        </div>
+        <div class="menu-card-add">+</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- Manifesto Section -->
+<section id="manifesto">
+  <div class="manifesto-line"></div>
+  <blockquote class="manifesto-quote">
+    "In a world of <strong>noise</strong> and speed, we choose the sacred art of <strong>stillness</strong> — one pour, one breath, one moment suspended in amber light."
+  </blockquote>
+  <p class="manifesto-attr">— Aura Brew Manifesto, 2024</p>
+  <div class="manifesto-line"></div>
+</section>
+
+<!-- Process Section -->
+<section id="process">
+  <div class="section-header">
+    <span class="section-eyebrow">The Method</span>
+    <h2 class="section-title">From <em>Shadow</em> to Cup</h2>
+  </div>
+  <div class="process-grid">
+    <div class="process-step">
+      <div class="process-step-num">01</div>
+      <span class="process-step-icon">🌱</span>
+      <div class="process-step-title">Source</div>
+      <div class="process-step-desc">Handpicked from altitude farms above 1800m. Visited personally. Chosen with conscience.</div>
+    </div>
+    <div class="process-step">
+      <div class="process-step-num">02</div>
+      <span class="process-step-icon">🔥</span>
+      <div class="process-step-title">Roast</div>
+      <div class="process-step-desc">Slow-roasted in ceramic drum kilns. Dark profiles, never burnt. Precision at every degree.</div>
+    </div>
+    <div class="process-step">
+      <div class="process-step-num">03</div>
+      <span class="process-step-icon">⚗️</span>
+      <div class="process-step-title">Extract</div>
+      <div class="process-step-desc">9 bars of pressure. 93°C water. 28 seconds. The alchemical moment where science becomes soul.</div>
+    </div>
+    <div class="process-step">
+      <div class="process-step-num">04</div>
+      <span class="process-step-icon">🫶</span>
+      <div class="process-step-title">Serve</div>
+      <div class="process-step-desc">Presented in silence. Received with gratitude. Each cup — a complete conversation.</div>
+    </div>
+  </div>
+</section>
+
+<!-- Reserve Section -->
+<section id="reserve">
+  <h2 class="reserve-title">Reserve Your<br><em>Moment</em></h2>
+  <p class="reserve-sub">Six tables. No walk-ins. Pure intention.</p>
+  <div class="reserve-actions">
+    <a href="#" class="btn btn-primary">Book a Table</a>
+    <a href="#" class="btn btn-ghost">Private Events</a>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer>
+  <div class="footer-logo">AURA<span>·</span>BREW</div>
+  <div class="footer-center">
+    <p>"Where time slows down, one drop at a time."</p>
+    <p style="margin-top:12px;font-size:0.6rem;letter-spacing:0.3em;font-style:normal;font-family:var(--ff-sans);">© 2024 AURA BREW. ALL RIGHTS RESERVED.</p>
+  </div>
+  <div class="footer-right">
+    <div class="footer-socials">
+      <a href="#">Instagram</a>
+      <a href="#">Pinterest</a>
+      <a href="#">Contact</a>
+    </div>
+    <div>Mumbai, India · By Reservation Only</div>
+  </div>
+</footer>
+
+<!-- ===================== SCRIPTS ===================== -->
+<script>
+gsap.registerPlugin(ScrollTrigger);
+
+/* ======================================================
+   THREE.JS — 3D COFFEE SCENE
+   ====================================================== */
+(function() {
+  const canvas = document.getElementById('hero-canvas');
+
+  const W = () => canvas.offsetWidth;
+  const H = () => canvas.offsetHeight;
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(40, W() / H(), 0.1, 100);
+  camera.position.set(0, 0.5, 9);
+
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  renderer.setSize(W(), H());
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.4;
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  /* — Materials — */
+  const glassMat = new THREE.MeshPhysicalMaterial({
+    color: 0x9ab0d4,
+    metalness: 0.05,
+    roughness: 0.02,
+    transmission: 0.88,
+    transparent: true,
+    opacity: 0.22,
+    side: THREE.DoubleSide,
+    thickness: 0.4,
+    ior: 1.5,
+    envMapIntensity: 1.0
+  });
+
+  const rimMat = new THREE.MeshStandardMaterial({
+    color: 0xD4A843,
+    metalness: 0.95,
+    roughness: 0.05,
+    emissive: new THREE.Color(0.5, 0.3, 0.0),
+    emissiveIntensity: 0.2
+  });
+
+  const coffeeMat = new THREE.MeshStandardMaterial({
+    color: 0x1e0d00,
+    metalness: 0.5,
+    roughness: 0.08,
+    emissive: new THREE.Color(0.35, 0.12, 0.0),
+    emissiveIntensity: 0.4
+  });
+
+  const saucerMat = new THREE.MeshPhysicalMaterial({
+    color: 0x0e0e14,
+    metalness: 0.4,
+    roughness: 0.3
+  });
+
+  const beanMat = new THREE.MeshStandardMaterial({
+    color: 0x321200,
+    metalness: 0.15,
+    roughness: 0.75,
+    emissive: new THREE.Color(0.12, 0.04, 0),
+    emissiveIntensity: 0.1
+  });
+
+  const dropletMat = new THREE.MeshPhysicalMaterial({
+    color: 0x7ab8e8,
+    metalness: 0.0,
+    roughness: 0.0,
+    transmission: 0.92,
+    transparent: true,
+    opacity: 0.35,
+    thickness: 0.4,
+    ior: 1.33
+  });
+
+  /* — Build Cup — */
+  const cupGroup = new THREE.Group();
+
+  // Cup body (open cylinder)
+  const cupBody = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.0, 0.76, 1.85, 80, 1, true),
+    glassMat
+  );
+  cupBody.castShadow = true;
+
+  // Cup bottom disc
+  const cupBase = new THREE.Mesh(
+    new THREE.CircleGeometry(0.76, 80),
+    glassMat
+  );
+  cupBase.rotation.x = -Math.PI / 2;
+  cupBase.position.y = -0.925;
+
+  // Top rim ring
+  const rimTop = new THREE.Mesh(
+    new THREE.TorusGeometry(1.0, 0.035, 16, 80),
+    rimMat
+  );
+  rimTop.rotation.x = Math.PI / 2;
+  rimTop.position.y = 0.925;
+
+  // Handle (half torus)
+  const handle = new THREE.Mesh(
+    new THREE.TorusGeometry(0.5, 0.065, 16, 60, Math.PI),
+    glassMat
+  );
+  handle.rotation.y = Math.PI / 2;
+  handle.position.set(1.15, -0.08, 0);
+
+  // Coffee liquid surface
+  const liquid = new THREE.Mesh(
+    new THREE.CircleGeometry(0.95, 80),
+    coffeeMat
+  );
+  liquid.rotation.x = -Math.PI / 2;
+  liquid.position.y = 0.35;
+
+  // Foam swirl (tiny bumps on surface)
+  for (let i = 0; i < 6; i++) {
+    const foamBit = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06 + Math.random() * 0.06, 8, 8),
+      new THREE.MeshStandardMaterial({
+        color: 0x8B5A2B, roughness: 0.8, metalness: 0.0,
+        emissive: new THREE.Color(0.2, 0.1, 0.0), emissiveIntensity: 0.1
+      })
+    );
+    const a = (i / 6) * Math.PI * 2;
+    const r = 0.2 + Math.random() * 0.5;
+    foamBit.position.set(Math.cos(a) * r, 0.37, Math.sin(a) * r);
+    cupGroup.add(foamBit);
+  }
+
+  // Saucer
+  const saucer = new THREE.Mesh(
+    new THREE.CylinderGeometry(1.55, 1.4, 0.12, 80),
+    saucerMat
+  );
+  saucer.position.y = -1.0;
+  saucer.receiveShadow = true;
+
+  cupGroup.add(cupBody, cupBase, rimTop, handle, liquid, saucer);
+  scene.add(cupGroup);
+  cupGroup.position.y = 0.2;
+
+  /* — Floating Beans — */
+  const beans = [];
+  const beanInitPos = [];
+
+  for (let i = 0; i < 16; i++) {
+    const beanGeom = new THREE.TorusGeometry(0.13, 0.075, 8, 20);
+    const bean = new THREE.Mesh(beanGeom, beanMat.clone());
+    const angle = (i / 16) * Math.PI * 2 + Math.random() * 0.5;
+    const r = 2.2 + Math.random() * 2.5;
+    const tz = (Math.random() - 0.5) * 4 - 1.5; // push some back
+    const ty = (Math.random() - 0.5) * 4;
+    bean.position.set(Math.cos(angle) * r, ty, tz + Math.sin(angle) * r * 0.4);
+    bean.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+    bean.scale.set(0.9 + Math.random() * 0.5, 1, 0.5 + Math.random() * 0.3);
+    beanInitPos.push({ ...bean.position });
+    beans.push(bean);
+    scene.add(bean);
+  }
+
+  /* — Water Droplets — */
+  const droplets = [];
+  for (let i = 0; i < 8; i++) {
+    const droplet = new THREE.Mesh(
+      new THREE.SphereGeometry(0.06 + Math.random() * 0.08, 16, 16),
+      dropletMat.clone()
+    );
+    const angle = Math.random() * Math.PI * 2;
+    const r = 1.8 + Math.random() * 3;
+    droplet.position.set(
+      Math.cos(angle) * r,
+      (Math.random() - 0.5) * 3.5,
+      Math.sin(angle) * r * 0.5 - 1
+    );
+    droplets.push(droplet);
+    scene.add(droplet);
+  }
+
+  /* — Steam Particles — */
+  const steamParticles = [];
+  const steamMat = new THREE.MeshBasicMaterial({ color: 0xddddcc, transparent: true, opacity: 0 });
+  for (let i = 0; i < 18; i++) {
+    const p = new THREE.Mesh(
+      new THREE.SphereGeometry(0.03 + Math.random() * 0.04, 8, 8),
+      steamMat.clone()
+    );
+    p.position.set(
+      (Math.random() - 0.5) * 0.8,
+      0.35 + Math.random() * 0.3,
+      (Math.random() - 0.5) * 0.4
+    );
+    p._speed = 0.008 + Math.random() * 0.01;
+    p._phase = Math.random() * Math.PI * 2;
+    p._baseX = p.position.x;
+    steamParticles.push(p);
+    cupGroup.add(p);
+  }
+
+  /* — Lighting — */
+  // Ambient
+  scene.add(new THREE.AmbientLight(0x080810, 1.5));
+
+  // Key light — warm amber/gold from top-right
+  const keyLight = new THREE.PointLight(0xC8860A, 6, 20);
+  keyLight.position.set(4, 6, 4);
+  keyLight.castShadow = true;
+  scene.add(keyLight);
+
+  // Rim light — cool teal from bottom-left
+  const rimLight = new THREE.PointLight(0x1dd4bf, 3, 15);
+  rimLight.position.set(-5, -2, -3);
+  scene.add(rimLight);
+
+  // Fill — soft warm from front
+  const fillLight = new THREE.PointLight(0xD4A843, 1.5, 12);
+  fillLight.position.set(0, 2, 8);
+  scene.add(fillLight);
+
+  // Accent — cool blue from top-left
+  const accentLight = new THREE.PointLight(0x4466bb, 1.2, 10);
+  accentLight.position.set(-6, 4, 2);
+  scene.add(accentLight);
+
+  /* — Mouse Tracking — */
+  let mouseX = 0, mouseY = 0;
+  let targetRotX = 0, targetRotY = 0;
+  let currentRotX = 0, currentRotY = 0;
+
+  document.addEventListener('mousemove', e => {
+    mouseX = (e.clientX / window.innerWidth - 0.5) * 0.7;
+    mouseY = (e.clientY / window.innerHeight - 0.5) * 0.4;
+  });
+
+  /* — Scroll-based deconstruction — */
+  let scrollProgress = 0;
+
+  window.addEventListener('scroll', () => {
+    const hero = document.getElementById('hero');
+    scrollProgress = Math.min(1, window.scrollY / (hero.offsetHeight * 0.7));
+  });
+
+  /* — Animation Loop — */
+  const clock = new THREE.Clock();
+  let frame = 0;
+
+  function animate() {
+    requestAnimationFrame(animate);
+    frame++;
+    const t = clock.getElapsedTime();
+
+    // Levitation
+    cupGroup.position.y = 0.2 + Math.sin(t * 0.6) * 0.18;
+
+    // Smooth mouse rotation
+    targetRotX = mouseY * 0.4;
+    targetRotY = mouseX * 0.6;
+    currentRotX += (targetRotX - currentRotX) * 0.06;
+    currentRotY += (targetRotY - currentRotY) * 0.06;
+    cupGroup.rotation.x = currentRotX;
+    cupGroup.rotation.y = currentRotY + t * 0.08; // slow auto-spin
+
+    // Beans orbit/spin
+    beans.forEach((bean, i) => {
+      bean.rotation.x += 0.004 + i * 0.0005;
+      bean.rotation.y += 0.003;
+      bean.position.y = beanInitPos[i].y + Math.sin(t * 0.5 + i) * 0.25;
+
+      // Scroll deconstruction — beans fly outward
+      const explodeFactor = scrollProgress * 8;
+      bean.position.x = beanInitPos[i].x * (1 + explodeFactor);
+      bean.position.z = beanInitPos[i].z * (1 + explodeFactor * 0.5);
+      bean.material.opacity = Math.max(0, 1 - scrollProgress * 1.5);
+      bean.material.transparent = true;
+    });
+
+    // Droplet bob
+    droplets.forEach((d, i) => {
+      d.position.y += Math.sin(t * 0.4 + i * 1.2) * 0.003;
+      d.rotation.y += 0.01;
+      const ef = scrollProgress * 6;
+      d.position.x = d.position.x + (d.position.x * ef * 0.01);
+      d.material.opacity = Math.max(0, 0.35 - scrollProgress * 0.5);
+    });
+
+    // Steam particles
+    steamParticles.forEach((p, i) => {
+      p._phase += p._speed;
+      p.position.y += p._speed * 0.7;
+      p.position.x = p._baseX + Math.sin(p._phase * 2) * 0.1;
+
+      const lifeT = (p.position.y - 0.35) / 2.5;
+      p.material.opacity = Math.sin(Math.min(1, lifeT) * Math.PI) * 0.25;
+
+      if (p.position.y > 2.8) {
+        p.position.y = 0.35 + Math.random() * 0.2;
+        p._baseX = (Math.random() - 0.5) * 0.8;
+        p._phase = Math.random() * Math.PI * 2;
+      }
+    });
+
+    // Cup fades on scroll
+    cupGroup.children.forEach(c => {
+      if (c.material && c.material.transparent) {
+        c.material.opacity = Math.max(0, c.material.opacity - scrollProgress * 0.003);
+      }
+    });
+
+    // Subtle key light animation
+    keyLight.intensity = 5 + Math.sin(t * 0.3) * 1.5;
+    keyLight.position.x = 4 + Math.sin(t * 0.15) * 1;
+
+    renderer.render(scene, camera);
+  }
+
+  animate();
+
+  /* — Resize — */
+  window.addEventListener('resize', () => {
+    camera.aspect = W() / H();
+    camera.updateProjectionMatrix();
+    renderer.setSize(W(), H());
+  });
+
+})();
+
+/* ======================================================
+   CUSTOM CURSOR
+   ====================================================== */
+(function() {
+  const dot = document.getElementById('cursor-dot');
+  const ring = document.getElementById('cursor-ring');
+  let rx = 0, ry = 0;
+  let tx = 0, ty = 0;
+
+  document.addEventListener('mousemove', e => {
+    tx = e.clientX; ty = e.clientY;
+    dot.style.left = tx + 'px';
+    dot.style.top = ty + 'px';
+  });
+
+  function followRing() {
+    rx += (tx - rx) * 0.12;
+    ry += (ty - ry) * 0.12;
+    ring.style.left = rx + 'px';
+    ring.style.top = ry + 'px';
+    requestAnimationFrame(followRing);
+  }
+  followRing();
+
+  document.querySelectorAll('a, button, .menu-card, .menu-card-add').forEach(el => {
+    el.addEventListener('mouseenter', () => document.body.classList.add('cursor-hover'));
+    el.addEventListener('mouseleave', () => document.body.classList.remove('cursor-hover'));
+  });
+})();
+
+/* ======================================================
+   BUTTON LIQUID GLOW — MOUSE POSITION
+   ====================================================== */
+document.querySelectorAll('.btn, .menu-card').forEach(el => {
+  el.addEventListener('mousemove', e => {
+    const r = el.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * 100;
+    const y = ((e.clientY - r.top) / r.height) * 100;
+    el.style.setProperty('--mx', x + '%');
+    el.style.setProperty('--my', y + '%');
+  });
+});
+
+/* ======================================================
+   LOADER ANIMATION
+   ====================================================== */
+(function() {
+  const loader = document.getElementById('loader');
+  const logo = document.getElementById('loader-logo');
+  const line = document.getElementById('loader-line');
+  const sub = document.getElementById('loader-sub');
+
+  // Logo reveal
+  gsap.to(logo, { clipPath: 'inset(0 0% 0 0)', duration: 1.4, ease: 'power3.inOut', delay: 0.2 });
+  // Line expand
+  gsap.to(line, { width: '180px', duration: 1.0, ease: 'power2.out', delay: 0.8 });
+  // Sub fade
+  gsap.to(sub, { opacity: 1, duration: 0.8, ease: 'power2.out', delay: 1.2 });
+  // Loader exit
+  gsap.to(loader, {
+    opacity: 0, duration: 0.8, delay: 2.4, ease: 'power2.inOut',
+    onComplete: () => { loader.style.display = 'none'; initPageAnimations(); }
+  });
+})();
+
+/* ======================================================
+   PAGE ANIMATIONS
+   ====================================================== */
+function initPageAnimations() {
+
+  /* — Nav reveal — */
+  gsap.to('#nav', { opacity: 1, duration: 1.0, ease: 'power2.out' });
+
+  /* — Hero text — */
+  gsap.to('.hero-eyebrow', { opacity: 1, y: 0, duration: 0.8, delay: 0.2, ease: 'power3.out' });
+
+  const heroLines = document.querySelectorAll('.hero-title .line span');
+  gsap.to(heroLines, {
+    y: 0, duration: 1.1, stagger: 0.15, delay: 0.4, ease: 'power4.out'
+  });
+
+  gsap.to('.hero-sub', { opacity: 1, duration: 0.9, delay: 0.9, ease: 'power2.out' });
+  gsap.to('.hero-actions', { opacity: 1, y: 0, duration: 0.8, delay: 1.1, ease: 'power3.out' });
+  gsap.to('.scroll-hint', { opacity: 1, duration: 0.8, delay: 1.6, ease: 'power2.out' });
+
+  /* — Craft section — */
+  gsap.from('#craft .craft-left > *', {
+    scrollTrigger: { trigger: '#craft', start: 'top 75%' },
+    y: 50, opacity: 0, duration: 0.9, stagger: 0.15, ease: 'power3.out'
+  });
+
+  gsap.from('#craft .craft-ring', {
+    scrollTrigger: { trigger: '#craft', start: 'top 70%' },
+    scale: 0.7, opacity: 0, duration: 1.2, ease: 'power4.out'
+  });
+
+  gsap.from('.stat-num', {
+    scrollTrigger: { trigger: '.craft-stats', start: 'top 80%' },
+    y: 30, opacity: 0, duration: 0.7, stagger: 0.1, ease: 'back.out(1.5)'
+  });
+
+  /* — Menu cards — */
+  gsap.from('.menu-card', {
+    scrollTrigger: { trigger: '#menu', start: 'top 70%' },
+    y: 60, opacity: 0, duration: 0.8, stagger: 0.1, ease: 'power3.out'
+  });
+
+  gsap.from('#menu .section-header > *', {
+    scrollTrigger: { trigger: '#menu', start: 'top 75%' },
+    y: 40, opacity: 0, duration: 0.8, stagger: 0.15, ease: 'power3.out'
+  });
+
+  /* — Manifesto — */
+  gsap.from('.manifesto-quote', {
+    scrollTrigger: { trigger: '#manifesto', start: 'top 75%' },
+    y: 40, opacity: 0, duration: 1.2, ease: 'power3.out'
+  });
+
+  gsap.from('.manifesto-attr, .manifesto-line', {
+    scrollTrigger: { trigger: '#manifesto', start: 'top 70%' },
+    y: 20, opacity: 0, duration: 0.8, stagger: 0.1, delay: 0.2, ease: 'power2.out'
+  });
+
+  /* — Process steps — */
+  gsap.from('.process-step', {
+    scrollTrigger: { trigger: '#process', start: 'top 70%' },
+    y: 50, opacity: 0, duration: 0.8, stagger: 0.12, ease: 'power3.out'
+  });
+
+  /* — Reserve section — */
+  gsap.from('#reserve .reserve-title', {
+    scrollTrigger: { trigger: '#reserve', start: 'top 70%' },
+    y: 60, opacity: 0, duration: 1.0, ease: 'power4.out'
+  });
+  gsap.from('#reserve .reserve-sub, #reserve .reserve-actions', {
+    scrollTrigger: { trigger: '#reserve', start: 'top 65%' },
+    y: 30, opacity: 0, duration: 0.8, stagger: 0.15, delay: 0.3, ease: 'power3.out'
+  });
+
+  /* — Parallax on hero text — */
+  gsap.to('.hero-content', {
+    scrollTrigger: {
+      trigger: '#hero', start: 'top top', end: 'bottom top',
+      scrub: true
+    },
+    y: -120, opacity: 0, ease: 'none'
+  });
+
+  /* — Footer — */
+  gsap.from('footer > *', {
+    scrollTrigger: { trigger: 'footer', start: 'top 85%' },
+    y: 30, opacity: 0, duration: 0.8, stagger: 0.1, ease: 'power2.out'
+  });
+}
+
+/* ======================================================
+   SMOOTH SCROLL FOR NAV LINKS
+   ====================================================== */
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+  a.addEventListener('click', e => {
+    const target = document.querySelector(a.getAttribute('href'));
+    if (target) {
+      e.preventDefault();
+      window.scrollTo({ top: target.offsetTop, behavior: 'smooth' });
+    }
+  });
+});
+</script>
+</body>
+</html>
